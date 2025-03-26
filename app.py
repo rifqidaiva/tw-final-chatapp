@@ -1,8 +1,10 @@
 from flask import Flask
 from flask_jwt_extended import JWTManager
+from flask_socketio import SocketIO
 from datetime import timedelta
 from users import users
 from friendships import friendships
+from events import socketio
 
 import sqlite3
 import os
@@ -38,14 +40,38 @@ if __name__ == "__main__":
         name TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        created_by INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS group_members (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        group_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(group_id, user_id)
+    );
+
     CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sender_id INTEGER NOT NULL,
-        receiver_id INTEGER NOT NULL,
+        receiver_id INTEGER, -- NULL if message is sent to a group
+        group_id INTEGER, -- NULL if message is sent to a user
         content TEXT NOT NULL,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+        CHECK (
+            (receiver_id IS NOT NULL AND group_id IS NULL) OR
+            (receiver_id IS NULL AND group_id IS NOT NULL)
+        )
     );
 
     CREATE TABLE IF NOT EXISTS friendships (
@@ -64,6 +90,7 @@ if __name__ == "__main__":
     conn.commit()
     conn.close()
 
-    print("Database created successfully")
+    print("\033[96m" + "Database created successfully" + "\033[0m")
 
-    app.run(debug=True)
+    socketio.init_app(app)
+    socketio.run(app, debug=True)

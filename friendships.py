@@ -22,16 +22,16 @@ def friend_request():
 
     if user2_id is None:
         conn.close()
-        return {"msg": "user2_id is required."}, 400
+        return {"msg": "user2_id is required"}, 400
 
     if user1_id == user2_id:
         conn.close()
-        return {"msg": "You cannot send a friend request to yourself."}, 400
+        return {"msg": "You cannot send a friend request to yourself"}, 400
 
     user2 = get_user_by_id(user2_id)
     if not user2:
         conn.close()
-        return {"msg": "User does not exist."}, 404
+        return {"msg": "User does not exist"}, 404
 
     # Check if the friendship already exists
     cur.execute(
@@ -41,7 +41,7 @@ def friend_request():
     existing_friendship = cur.fetchone()
     if existing_friendship:
         conn.close()
-        return {"msg": "Friendship already exists."}, 409
+        return {"msg": "Friendship already exists"}, 409
 
     cur.execute(
         "INSERT INTO friendships (user1_id, user2_id) VALUES (?, ?);",
@@ -50,7 +50,7 @@ def friend_request():
     conn.commit()
     conn.close()
 
-    return {"msg": "Friendship requested successfully."}, 201
+    return {"msg": "Friendship requested successfully"}, 201
 
 
 # MARK: Accept
@@ -66,7 +66,7 @@ def accept():
 
     if user2_id is None:
         conn.close()
-        return {"msg": "user2_id is required."}, 400
+        return {"msg": "user2_id is required"}, 400
 
     # Check if the friendship exists and is pending
     cur.execute(
@@ -76,11 +76,11 @@ def accept():
     existing_friendship = cur.fetchone()
     if not existing_friendship:
         conn.close()
-        return {"msg": "Friendship does not exist."}, 404
+        return {"msg": "Friendship does not exist"}, 404
 
     if existing_friendship[0] != "pending":
         conn.close()
-        return {"msg": "Friendship is not in a pending state."}, 400
+        return {"msg": "Friendship is not in a pending state"}, 400
 
     cur.execute(
         "UPDATE friendships SET status = 'accepted' WHERE user1_id = ? AND user2_id = ?",
@@ -89,7 +89,7 @@ def accept():
     conn.commit()
     conn.close()
 
-    return {"msg": "Friendship accepted successfully."}, 200
+    return {"msg": "Friendship accepted successfully"}, 200
 
 
 # MARK: Remove
@@ -105,7 +105,7 @@ def remove():
 
     if user2_id is None:
         conn.close()
-        return {"msg": "user2_id is required."}, 400
+        return {"msg": "user2_id is required"}, 400
 
     # Check if the friendship exists
     cur.execute(
@@ -115,7 +115,7 @@ def remove():
     existing_friendship = cur.fetchone()
     if not existing_friendship:
         conn.close()
-        return {"msg": "Friendship does not exist."}, 404
+        return {"msg": "Friendship does not exist"}, 404
 
     cur.execute(
         "DELETE FROM friendships WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)",
@@ -124,7 +124,7 @@ def remove():
     conn.commit()
     conn.close()
 
-    return {"msg": "Friendship removed successfully."}, 200
+    return {"msg": "Friendship removed successfully"}, 200
 
 
 # MARK: Friends list
@@ -158,7 +158,7 @@ def list():
     ]
 
     return {
-        "msg": "Friends and pending requests listed successfully.",
+        "msg": "Friends and pending requests listed successfully",
         "friends": friends_list,
     }, 200
 
@@ -190,6 +190,6 @@ def pending():
     ]
 
     return {
-        "msg": "Pending requests listed successfully.",
+        "msg": "Pending requests listed successfully",
         "pending_requests": pending_list,
     }, 200

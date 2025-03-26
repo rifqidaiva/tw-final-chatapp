@@ -20,17 +20,17 @@ def register():
     name = data.get("name")
 
     if email is None or password is None or name is None:
-        return {"msg": "Email, password, and name are required."}, 400
+        return {"msg": "Email, password, and name are required"}, 400
 
     # Validate email
     if not is_valid_email(email):
-        return {"msg": "Invalid email format according to RFC 5322."}, 400
+        return {"msg": "Invalid email format according to RFC 5322"}, 400
 
     # Validate password
     if not is_valid_password(password):
         return (
             {
-                "msg": "Password must be at least 8 characters long, contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (can be any non-alphanumeric character). No spaces are allowed."
+                "msg": "Password must be at least 8 characters long, contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (can be any non-alphanumeric character). No spaces are allowed"
             },
             400,
         )
@@ -43,7 +43,7 @@ def register():
     existing_user = cur.fetchone()
     if existing_user:
         conn.close()
-        return {"msg": "Email is already registered."}, 409
+        return {"msg": "Email is already registered"}, 409
 
     hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt(12))
 
@@ -55,7 +55,7 @@ def register():
     conn.commit()
     conn.close()
 
-    return {"msg": "User registered successfully."}, 201
+    return {"msg": "User registered successfully"}, 201
 
 
 # MARK: Login
@@ -66,17 +66,17 @@ def login():
     password = data.get("password")
 
     if email is None or password is None:
-        return {"msg": "Email and password are required."}, 400
+        return {"msg": "Email and password are required"}, 400
 
     # Validate email
     if not is_valid_email(email):
-        return {"msg": "Invalid email format according to RFC 5322."}, 400
+        return {"msg": "Invalid email format according to RFC 5322"}, 400
 
     # Validate password
     if not is_valid_password(password):
         return (
             {
-                "msg": "Password must be at least 8 characters long, contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (can be any non-alphanumeric character). No spaces are allowed."
+                "msg": "Password must be at least 8 characters long, contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (can be any non-alphanumeric character). No spaces are allowed"
             },
             400,
         )
@@ -89,13 +89,13 @@ def login():
     conn.close()
 
     if user is None or not bcrypt.checkpw(password.encode(), user[2].encode()):
-        return {"msg": "Invalid email or password."}, 401
+        return {"msg": "Invalid email or password"}, 401
 
     # Use the user's ID as the identity in the JWT
     access_token = create_access_token(identity=str(user[0]))
 
     return {
-        "msg": "Login successful.",
+        "msg": "Login successful",
         "access_token": access_token,
     }, 200
 
@@ -109,12 +109,10 @@ def data():
     user = get_user_by_id(user_id)
 
     if user is None:
-        return {"msg": "User not found."}, 404
-
-    print(user)
+        return {"msg": "User not found"}, 404
 
     return {
-        "msg": "User data retrieved successfully.",
+        "msg": "User data retrieved successfully",
         "id": user[0],
         "email": user[1],
         "name": user[3],
