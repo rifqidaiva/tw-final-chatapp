@@ -4,6 +4,7 @@ from flask_socketio import SocketIO
 from datetime import timedelta
 from users import users
 from friendships import friendships
+from messages import messages
 from events import socketio
 
 import sqlite3
@@ -15,6 +16,7 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
 app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=30)
 app.register_blueprint(users, url_prefix="/users")
 app.register_blueprint(friendships, url_prefix="/friendships")
+app.register_blueprint(messages, url_prefix="/messages")
 
 jwt = JWTManager(app)
 

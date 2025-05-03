@@ -76,3 +76,60 @@ Ikuti langkah-langkah berikut untuk mengatur dan menjalankan proyek ini:
    ```bash
    deactivate
    ```
+
+## Endpoints API
+
+Berikut adalah daftar endpoint API yang tersedia dalam aplikasi ini:
+
+### Pengguna
+
+1. **POST /users/register**: Mendaftar pengguna baru.
+
+   - **Request Body**:
+     ```json
+     {
+       "username": "string",
+       "password": "string"
+     }
+     ```
+   - **Response**:
+     ```json
+     {
+       "msg": "User registered successfully"
+     }
+     ```
+
+2. **POST /users/login**: Masuk sebagai pengguna.
+
+   - **Request Body**:
+     ```json
+     {
+       "username": "string",
+       "password": "string"
+     }
+     ```
+   - **Response**:
+     ```json
+     {
+       "msg": "Login successful"
+     }
+     ```
+
+### Pesan
+
+1. **POST /messages/send**: Mengirim pesan.
+
+   - **Request Body**:
+     ```json
+     {
+       "sender": "string",
+       "receiver": "string",
+       "message": "string"
+     }
+     ```
+   - **Response**:
+     ```json
+     {
+       "msg": "Message sent successfully"
+     }
+     ```

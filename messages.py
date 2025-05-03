@@ -1,4 +1,65 @@
+from flask import Blueprint
+from flask import request
+from flask_jwt_extended import jwt_required, get_jwt_identity
+
 import sqlite3
+
+messages = Blueprint("messages", __name__)
+
+
+# MARK: /get_messages
+@messages.route("/get_messages", methods=["GET"])
+@jwt_required()
+def get_messages_route():
+    data = request.get_json()
+    user1_id = get_jwt_identity()
+    user2_id = data.get("user2_id")
+
+    if user2_id is None:
+        return {"msg": "user2_id is required"}, 400
+
+    raw_messages = get_messages(user1_id, user2_id)
+    messages = [
+        {
+            "sender_id": msg[0],
+            "receiver_id": msg[1],
+            "content": msg[2],
+            "timestamp": msg[3],
+            "is_sender": msg[0] == user1_id,
+        }
+        for msg in raw_messages
+    ]
+    return {"messages": messages, "msg": "Messages retrieved successfully"}, 200
+
+
+# MARK: /get_group_messages
+@messages.route("/get_group_messages", methods=["GET"])
+@jwt_required()
+def get_group_messages_route():
+    data = request.get_json()
+    group_id = data.get("group_id")
+    user_id = get_jwt_identity()
+
+    if group_id is None:
+        return {"msg": "group_id is required"}, 400
+
+    # Check if the user is a member of the group
+    group_members = get_group_members(group_id)
+    if not any(member[0] == user_id for member in group_members):
+        return {"msg": "You are not a member of this group"}, 403
+
+    raw_messages = get_group_messages(group_id)
+    messages = [
+        {
+            "sender_id": msg[0],
+            "group_id": msg[1],
+            "content": msg[2],
+            "timestamp": msg[3],
+            "is_sender": msg[0] == user_id,
+        }
+        for msg in raw_messages
+    ]
+    return {"messages": messages, "msg": "Messages retrieved successfully"}, 200
 
 
 def send_message(sender_id: int, receiver_id: int, content: str) -> bool:
