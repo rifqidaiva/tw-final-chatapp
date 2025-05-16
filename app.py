@@ -1,24 +1,20 @@
-from flask import Flask
-from flask_jwt_extended import JWTManager
-from flask_socketio import SocketIO
-from datetime import timedelta
-from users import users
-from friendships import friendships
-from messages import messages
-from events import socketio
-
+import flask
+import flask_jwt_extended
+import datetime
 import sqlite3
 import os
 
-app = Flask(__name__)
-app.config["JWT_SECRET_KEY"] = "super-secret"
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
-app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=30)
-app.register_blueprint(users, url_prefix="/users")
-app.register_blueprint(friendships, url_prefix="/friendships")
-app.register_blueprint(messages, url_prefix="/messages")
+import events
+import utils
+import routes.users
 
-jwt = JWTManager(app)
+app = flask.Flask(__name__)
+app.config["JWT_SECRET_KEY"] = "super-secret"
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = datetime.timedelta(hours=1)
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = datetime.timedelta(days=30)
+app.register_blueprint(routes.users.users, url_prefix="/users")
+
+jwt = flask_jwt_extended.JWTManager(app)
 
 
 @app.route("/")
@@ -92,7 +88,7 @@ if __name__ == "__main__":
     conn.commit()
     conn.close()
 
-    print("\033[96m" + "Database created successfully" + "\033[0m")
+    utils.print_custom(message="Database created successfully")
 
-    socketio.init_app(app)
-    socketio.run(app, debug=True)
+    events.socketio.init_app(app)
+    events.socketio.run(app, debug=True)
