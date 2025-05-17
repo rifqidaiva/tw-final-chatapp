@@ -1,4 +1,5 @@
 import flask
+import os
 
 import utils
 
@@ -33,7 +34,6 @@ def profile_put(user_id: str):
     input_email = data.get("email")
     input_password = data.get("password")
     input_name = data.get("name")
-    input_profile_picture = data.get("profile_picture")
 
     user = utils.User.from_id(user_id)
     if user is None:
@@ -53,9 +53,6 @@ def profile_put(user_id: str):
     if input_name is not None:
         user.name = input_name
         updated = True
-    if input_profile_picture is not None:
-        user.profile_picture = input_profile_picture
-        updated = True
 
     if updated:
         user.save()
@@ -63,6 +60,72 @@ def profile_put(user_id: str):
     return utils.Response(
         status_code=200,
         msg="Profile updated successfully" if updated else "No changes made",
+        data={
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "profile_picture": user.profile_picture,
+            "created_at": user.created_at,
+        },
+    ).send()
+
+
+def upload_profile_picture(user_id: str):
+    """Upload a new profile picture for the user."""
+    user = utils.User.from_id(user_id)
+    if user is None:
+        return utils.Response(
+            status_code=404,
+            msg="User not found",
+        )
+
+    # Assuming the file is sent as form-data with the key 'profile_picture'
+    if "profile_picture" not in flask.request.files:
+        return utils.Response(
+            status_code=400,
+            msg="No file part in the request",
+        ).send()
+
+    file = flask.request.files["profile_picture"]
+
+    if file.filename == "":
+        return utils.Response(
+            status_code=400,
+            msg="No selected file",
+        ).send()
+
+    # Check if the file is allowed
+    allowed_extensions = {"png", "jpg", "jpeg"}
+    if not (
+        file.filename
+        and any(file.filename.lower().endswith(f".{ext}") for ext in allowed_extensions)
+    ):
+        return utils.Response(
+            status_code=400,
+            msg="File type not allowed",
+        ).send()
+
+    # Save the file to a directory
+    file_ext = file.filename.rsplit(".", 1)[-1].lower()
+    upload_dir = f"uploads/{user.id}"
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = f"{upload_dir}/profile_picture.{file_ext}"
+
+    # Remove old profile pictures with different extensions
+    for ext in allowed_extensions:
+        old_file = f"{upload_dir}/profile_picture.{ext}"
+        if os.path.exists(old_file) and old_file != file_path:
+            os.remove(old_file)
+
+    file.save(file_path)
+
+    # Update the user's profile picture path
+    user.profile_picture = "users/" + file_path
+    user.save()
+
+    return utils.Response(
+        status_code=200,
+        msg="Profile picture uploaded successfully",
         data={
             "id": user.id,
             "email": user.email,

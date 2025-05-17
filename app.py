@@ -12,6 +12,9 @@ app = flask.Flask(__name__)
 app.config["JWT_SECRET_KEY"] = "super-secret"
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = datetime.timedelta(hours=1)
 app.config["JWT_REFRESH_TOKEN_EXPIRES"] = datetime.timedelta(days=30)
+app.config["UPLOAD_FOLDER"] = "uploads"
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
+app.config["ALLOWED_EXTENSIONS"] = {"png", "jpg", "jpeg", "gif", "pdf", "docx", "txt"}
 app.register_blueprint(routes.users.users, url_prefix="/users")
 
 jwt = flask_jwt_extended.JWTManager(app)
@@ -26,6 +29,14 @@ if __name__ == "__main__":
     # Remove the database file if it exists
     if os.path.exists("chatapp.db"):
         os.remove("chatapp.db")
+
+    # Remove the uploads directory if it exists
+    if os.path.exists("uploads"):
+        for root, dirs, files in os.walk("uploads", topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
 
     conn = sqlite3.connect("chatapp.db")
     cur = conn.cursor()
