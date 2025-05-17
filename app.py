@@ -35,7 +35,9 @@ if __name__ == "__main__":
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
-        name TEXT NOT NULL
+        name TEXT NOT NULL,
+        profile_picture TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS groups (
@@ -88,7 +90,7 @@ if __name__ == "__main__":
     conn.commit()
     conn.close()
 
-    utils.print_custom(message="Database created successfully")
+    utils.log(message="Database created successfully")
 
     events.socketio.init_app(app)
     events.socketio.run(app, debug=True)

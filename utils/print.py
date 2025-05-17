@@ -1,4 +1,4 @@
-def print_custom(message: str, color: str = "cyan", bold: bool = True) -> None:
+def log(message: str, color: str = "cyan", bold: bool = True) -> None:
     """
     Print a message to the console with optional color and bold formatting.
 

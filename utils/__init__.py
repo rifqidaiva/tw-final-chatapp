@@ -1,7 +1,9 @@
-from .print import print_custom
+from .print import log
 from .response import Response
+from .user import User
 
 __all__ = [
-    "print_custom",
+    "log",
     "Response",
+    "User",
 ]
