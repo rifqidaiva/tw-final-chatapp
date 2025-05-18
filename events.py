@@ -94,11 +94,14 @@ def handle_message(data):
     message.sender_id = user_id
     message.save()
 
-    # Emit the message to the receiver
+    # Emit the message to the receiver and sender
     receiver_id = message.receiver_id
     if receiver_id:
         socketio.emit("message", message.to_dict(), to=receiver_id)
-        utils.log(message=f"Message sent to {receiver_id}: {message.to_dict()}")
+        socketio.emit("message", message.to_dict(), to=user_id)
+        utils.log(
+            message=f"Message sent to {receiver_id} and {user_id}: {message.to_dict()}"
+        )
     else:
         utils.log(message="Receiver ID not found in message data")
 
@@ -173,11 +176,24 @@ def handle_delete_message(data):
 
     # Delete the message from the database
     message = utils.message.Message.from_id(message_id)
-    if message and (message.sender_id == user_id or message.receiver_id == user_id):
-        message.delete()
-        utils.log(message=f"Message {message_id} deleted by {user_id}")
-        socketio.emit(
-            "delete_message", {"message_id": message_id}, to=message.receiver_id
-        )
+    if message:
+        utils.log(message=f"Fetching message {message.to_dict()} from database")
+        if str(message.sender_id) == str(user_id) or str(message.receiver_id) == str(
+            user_id
+        ):
+            message.delete()
+            utils.log(message=f"Message {message_id} deleted by {user_id}")
+            socketio.emit(
+                "delete_message",
+                {"message_id": message_id},
+                to=str(message.receiver_id),
+            )
+            socketio.emit(
+                "delete_message",
+                {"message_id": message_id},
+                to=str(message.sender_id),
+            )
+        else:
+            utils.log(message="Message not found or permission denied")
     else:
-        utils.log(message="Message not found or permission denied")
+        utils.log(message="Message not found in database")
