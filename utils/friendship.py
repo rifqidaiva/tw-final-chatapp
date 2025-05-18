@@ -88,8 +88,15 @@ class Friendship:
 
         conn.close()
 
-        return [friendship for row in rows if row and (friendship := cls.from_row(row)) is not None] if rows else []
-        
+        return (
+            [
+                friendship
+                for row in rows
+                if row and (friendship := cls.from_row(row)) is not None
+            ]
+            if rows
+            else []
+        )
 
     def save(self) -> None:
         """

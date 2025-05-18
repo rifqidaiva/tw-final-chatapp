@@ -3,6 +3,7 @@ import flask_jwt_extended
 
 from .register import register
 from .login import login
+from .get_all import get_all_users
 from .profile import (
     profile_get,
     profile_put,
@@ -22,6 +23,13 @@ def register_route():
 @users.route("/login", methods=["POST"])
 def login_route():
     return login()
+
+
+@users.route("/get_all", methods=["GET"])
+@flask_jwt_extended.jwt_required()
+def get_all_users_route():
+    user_id = flask_jwt_extended.get_jwt_identity()
+    return get_all_users(user_id)
 
 
 @users.route("/profile", methods=["GET", "PUT"])

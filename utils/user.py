@@ -24,7 +24,7 @@ class User:
         """
         Create a User instance from a database row.
         Assuming the row is a tuple with the following structure:
-        
+
         (id, email, password, name, profile_picture, created_at)
         """
         if row is None or len(row) != 6:
@@ -55,6 +55,26 @@ class User:
 
         return cls.from_row(row) if row else None
 
+    @classmethod
+    def get_all_except(cls, user_id: str) -> list["User"]:
+        """
+        Get all users except the current user.
+        This method should be implemented to fetch all users from the database.
+        """
+        conn = sqlite3.connect("chatapp.db")
+        cur = conn.cursor()
+
+        cur.execute("SELECT * FROM users WHERE id != ?", (user_id,))
+        rows = cur.fetchall()
+
+        conn.close()
+
+        return (
+            [user for row in rows if (user := cls.from_row(row)) is not None]
+            if rows
+            else []
+        )
+
     def save(self):
         """
         - Save the user instance to the database.
@@ -82,3 +102,15 @@ class User:
 
         conn.commit()
         conn.close()
+
+    def to_dict(self) -> dict:
+        """
+        Convert the user instance to a dictionary.
+        """
+        return {
+            "id": self.id,
+            "email": self.email,
+            "name": self.name,
+            "profile_picture": self.profile_picture,
+            "created_at": self.created_at,
+        }

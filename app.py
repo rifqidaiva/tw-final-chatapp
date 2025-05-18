@@ -8,6 +8,7 @@ import events
 import utils
 import routes.users
 import routes.friendships
+import routes.messages
 
 app = flask.Flask(__name__)
 app.config["JWT_SECRET_KEY"] = "super-secret"
@@ -18,6 +19,7 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
 app.config["ALLOWED_EXTENSIONS"] = {"png", "jpg", "jpeg", "gif", "pdf", "docx", "txt"}
 app.register_blueprint(routes.users.users, url_prefix="/users")
 app.register_blueprint(routes.friendships.friendships, url_prefix="/friendships")
+app.register_blueprint(routes.messages.messages, url_prefix="/messages")
 
 jwt = flask_jwt_extended.JWTManager(app)
 
@@ -57,7 +59,10 @@ if __name__ == "__main__":
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sender_id INTEGER NOT NULL,
         receiver_id INTEGER NOT NULL,
-        content TEXT NOT NULL,
+        content TEXT,
+        file_path TEXT,
+        file_name TEXT,
+        file_type TEXT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
