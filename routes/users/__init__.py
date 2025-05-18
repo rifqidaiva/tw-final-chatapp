@@ -3,9 +3,13 @@ import flask_jwt_extended
 
 from .register import register
 from .login import login
-from .profile import profile_get, profile_put, upload_profile_picture
+from .profile import (
+    profile_get,
+    profile_put,
+    upload_profile_picture,
+    serve_profile_picture,
+)
 
-import utils
 
 users = flask.Blueprint("users", __name__)
 
@@ -41,16 +45,7 @@ def upload_profile_picture_route():
 # serve profile picture
 @users.route("/uploads/<user_id>/<filename>", methods=["GET"])
 def serve_profile_picture(user_id: str, filename: str):
-    user = utils.User.from_id(user_id)
-    if user is None:
-        return utils.Response(
-            status_code=404,
-            msg="User not found",
-        ).send()
-
-    return flask.send_from_directory(
-        f"uploads/{user_id}", filename, as_attachment=False
-    )
+    return serve_profile_picture(user_id, filename)
 
 
 __all__ = [

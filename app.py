@@ -7,6 +7,7 @@ import os
 import events
 import utils
 import routes.users
+import routes.friendships
 
 app = flask.Flask(__name__)
 app.config["JWT_SECRET_KEY"] = "super-secret"
@@ -16,6 +17,7 @@ app.config["UPLOAD_FOLDER"] = "uploads"
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
 app.config["ALLOWED_EXTENSIONS"] = {"png", "jpg", "jpeg", "gif", "pdf", "docx", "txt"}
 app.register_blueprint(routes.users.users, url_prefix="/users")
+app.register_blueprint(routes.friendships.friendships, url_prefix="/friendships")
 
 jwt = flask_jwt_extended.JWTManager(app)
 
@@ -51,38 +53,14 @@ if __name__ == "__main__":
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
-    CREATE TABLE IF NOT EXISTS groups (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        created_by INTEGER NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS group_members (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        group_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        UNIQUE(group_id, user_id)
-    );
-
     CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sender_id INTEGER NOT NULL,
-        receiver_id INTEGER, -- NULL if message is sent to a group
-        group_id INTEGER, -- NULL if message is sent to a user
+        receiver_id INTEGER NOT NULL,
         content TEXT NOT NULL,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
-        CHECK (
-            (receiver_id IS NOT NULL AND group_id IS NULL) OR
-            (receiver_id IS NULL AND group_id IS NOT NULL)
-        )
+        FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS friendships (

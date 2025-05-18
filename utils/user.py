@@ -24,6 +24,7 @@ class User:
         """
         Create a User instance from a database row.
         Assuming the row is a tuple with the following structure:
+        
         (id, email, password, name, profile_picture, created_at)
         """
         if row is None or len(row) != 6:

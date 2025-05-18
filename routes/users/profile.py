@@ -4,6 +4,7 @@ import os
 import utils
 
 
+# MARK: GET /users/profile
 def profile_get(user_id: str):
     """Get the profile of the current user."""
 
@@ -28,6 +29,7 @@ def profile_get(user_id: str):
     ).send()
 
 
+# MARK: PUT /users/profile
 def profile_put(user_id: str):
     data = flask.request.get_json()
 
@@ -70,6 +72,7 @@ def profile_put(user_id: str):
     ).send()
 
 
+# MARK: POST /users/profile/upload
 def upload_profile_picture(user_id: str):
     """Upload a new profile picture for the user."""
     user = utils.User.from_id(user_id)
@@ -134,3 +137,17 @@ def upload_profile_picture(user_id: str):
             "created_at": user.created_at,
         },
     ).send()
+
+
+# MARK: GET /uploads/<user_id>/<filename>
+def serve_profile_picture(user_id: str, filename: str):
+    user = utils.User.from_id(user_id)
+    if user is None:
+        return utils.Response(
+            status_code=404,
+            msg="User not found",
+        ).send()
+
+    return flask.send_from_directory(
+        f"uploads/{user_id}", filename, as_attachment=False
+    )
