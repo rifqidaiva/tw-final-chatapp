@@ -1,107 +1,199 @@
-from flask import request
-from flask_socketio import SocketIO
-from flask_jwt_extended import decode_token
+import flask
+import flask_socketio
+import flask_jwt_extended
 
-import messages
+import utils
+import utils.message
 
-socketio = SocketIO(async_mode="eventlet")
-users = {}
+socketio = flask_socketio.SocketIO(async_mode="eventlet")
 
 
+# MARK:  connect
 @socketio.on("connect")
 def connect():
-    # Get token from header
-    auth_header = request.headers.get("Authorization")
+    """
+    Handle a new connection to the WebSocket.
+    """
+    # Get token from the request
+    auth_header = flask.request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
-        print("\033[96m" + "Authorization header is missing or invalid" + "\033[0m")
+        utils.log(message="Authorization header missing or invalid")
         return False
 
     access_token = auth_header.split(" ")[1]
 
+    # Verify the token
     try:
-        decoded_token = decode_token(access_token)
-        user_id = decoded_token.get("sub")
+        decoded_token = flask_jwt_extended.decode_token(access_token)
+        user_id = decoded_token["sub"]
         if user_id is None:
-            print("\033[96m" + "User ID is None" + "\033[0m")
+            utils.log(message="User ID not found in token")
             return False
 
-        # Store the user ID and socket ID
-        users[request.sid] = user_id
-        print("\033[96m" + "Connect: ", request.sid + ": " + str(user_id) + "\033[0m")
+        # Store the user ID
+        flask_socketio.join_room(user_id)
+        flask.session["user_id"] = user_id
+        utils.log(message=f"User {user_id} connected")
+
     except Exception as e:
-        print("\033[96m" + f"Token decoding failed: {str(e)}" + "\033[0m")
+        utils.log(message=f"Token verification failed: {str(e)}")
         return False
 
-    print("\033[96m" + "Users: ", users, "\033[0m")
+    return True
 
 
+# MARK:  disconnect
 @socketio.on("disconnect")
 def disconnect():
-    # Remove the user ID and socket ID mapping
-    user_id = users.pop(request.sid, None)
-    if user_id is None:
-        print("\033[96m" + "User ID is None" + "\033[0m")
-        return False
+    """
+    Handle a disconnection from the WebSocket.
+    """
+    user_id = flask.session.get("user_id")
+    if user_id:
+        utils.log(message=f"User {user_id} disconnected")
+        del flask.session["user_id"]
+        flask_socketio.leave_room(user_id)
+    else:
+        utils.log(message="User ID not found in session")
 
-    print("\033[96m" + "Disconnect: ", request.sid + ": " + str(user_id) + "\033[0m")
-    print("\033[96m" + "Users: ", users, "\033[0m")
 
-
+# MARK:  message
 @socketio.on("message")
-def message(data):
-    sender_id = users.get(request.sid)
-    if sender_id is None:
-        print("\033[96m" + "Sender ID is None" + "\033[0m")
+def handle_message(data):
+    """
+    Handle incoming messages.
+    """
+    user_id = flask.session.get("user_id")
+    if not user_id:
+        utils.log(message="User ID not found in session")
         return False
 
-    # Validate that only one of receiver_id or group_id is provided
-    receiver_id = data.get("receiver_id")
-    group_id = data.get("group_id")
-    if (receiver_id is not None and group_id is not None) or (
-        receiver_id is None and group_id is None
-    ):
-        print(
-            "\033[96m"
-            + "Invalid data: Provide either receiver_id or group_id, but not both"
-            + "\033[0m"
+    utils.log(message=f"Received message from {user_id}: {data}")
+
+    message = utils.message.Message(
+        id=data.get("id"),
+        sender_id=user_id,
+        receiver_id=data.get("receiver_id"),
+        content=data.get("content"),
+        file_path=data.get("file_path"),
+        file_name=data.get("file_name"),
+        file_type=data.get("file_type"),
+        timestamp=data.get("timestamp"),
+    )
+
+    # Validate the message
+    if not message.content and not message.file_path:
+        utils.log(message="Message content and file path are both empty")
+        return False
+
+    if not message.validate():
+        utils.log(message="Message validation failed")
+        return False
+
+    # Save the message to the database
+    message.sender_id = user_id
+    message.save()
+
+    # Emit the message to the receiver and sender
+    receiver_id = message.receiver_id
+    if receiver_id:
+        socketio.emit("message", message.to_dict(), to=receiver_id)
+        socketio.emit("message", message.to_dict(), to=user_id)
+        utils.log(
+            message=f"Message sent to {receiver_id} and {user_id}: {message.to_dict()}"
         )
+    else:
+        utils.log(message="Receiver ID not found in message data")
+
+
+# MARK: upload
+@socketio.on("upload")
+def handle_upload(data):
+    """
+    Handle file uploads.
+    """
+    user_id = flask.session.get("user_id")
+    if not user_id:
+        utils.log(message="User ID not found in session")
         return False
 
-    if receiver_id is not None:
-        # Handle sending to a specific user
-        if not messages.send_message(sender_id, receiver_id, data["content"]):
-            print("\033[96m" + "Message sending to user failed" + "\033[0m")
-            return False
+    utils.log(message=f"Received upload from {user_id}: {data}")
 
-        data["sender_id"] = sender_id
+    # Check for file and receiver_id
+    file = data.get("file")
+    receiver_id = data.get("receiver_id")
+    if not file:
+        utils.log(message="File is empty or not provided")
+        return False
+    if not receiver_id:
+        utils.log(message="Receiver ID not found in upload data")
+        return False
 
-        # Send the message to the receiver
-        receiver_sid = [sid for sid, user_id in users.items() if user_id == receiver_id]
-        if not receiver_sid:
-            print("\033[96m" + "Receiver is not connected" + "\033[0m")
-            return False
-        for sid in receiver_sid:
-            socketio.emit("message", data, room=sid)
+    # Create a message entry in the database (without file_path yet)
+    message = utils.message.Message(
+        sender_id=user_id,
+        receiver_id=receiver_id,
+        content=data.get("content", ""),
+        file_path="",  # will be updated after saving file
+        file_name=file.filename,
+        file_type=file.content_type,
+        timestamp=data.get("timestamp"),
+    )
+    message.save()  # Save to get the message.id
 
-    elif group_id is not None:
-        # Handle sending to a group
-        if not messages.send_group_message(sender_id, group_id, data["content"]):
-            print("\033[96m" + "Message sending to group failed" + "\033[0m")
-            return False
+    # Save the file using message.id
+    upload_dir = f"uploads/{user_id}"
+    utils.ensure_dir(upload_dir)
+    file_path = f"{upload_dir}/{message.id}_{file.filename}"
+    file.save(file_path)
 
-        # Send the message to all members of the group
-        group_members = messages.get_group_members(group_id)
-        if not group_members:
-            print("\033[96m" + "No members found in the group" + "\033[0m")
-            return False
+    # Update message with file_path and save again
+    message.file_path = file_path
+    message.save()
 
-        for member_id in group_members:
-            member_sid = [sid for sid, user_id in users.items() if user_id == member_id]
-            if not member_sid:
-                print(
-                    "\033[96m"
-                    + f"Group member {member_id} is not connected"
-                    + "\033[0m"
-                )
-                continue
-            socketio.emit("message", data, room=member_sid[0])
+    # Emit the message from database
+    socketio.emit("message", message.to_dict(), to=receiver_id)
+    utils.log(
+        message=f"File uploaded and message sent to {receiver_id}: {message.to_dict()}"
+    )
+
+
+# MARK: delete_message
+@socketio.on("delete_message")
+def handle_delete_message(data):
+    """
+    menghapus pesan atau file yang dikirim
+    """
+    user_id = flask.session.get("user_id")
+    if not user_id:
+        utils.log(message="User ID not found in session")
+        return False
+
+    message_id = data.get("message_id")
+    if not message_id:
+        utils.log(message="Message ID not found in delete data")
+        return False
+
+    # Delete the message from the database
+    message = utils.message.Message.from_id(message_id)
+    if message:
+        utils.log(message=f"Fetching message {message.to_dict()} from database")
+        if str(message.sender_id) == str(user_id) or str(message.receiver_id) == str(
+            user_id
+        ):
+            message.delete()
+            utils.log(message=f"Message {message_id} deleted by {user_id}")
+            socketio.emit(
+                "delete_message",
+                {"message_id": message_id},
+                to=str(message.receiver_id),
+            )
+            socketio.emit(
+                "delete_message",
+                {"message_id": message_id},
+                to=str(message.sender_id),
+            )
+        else:
+            utils.log(message="Message not found or permission denied")
+    else:
+        utils.log(message="Message not found in database")
